@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>IPO-bevakning Norden</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="top">
+  <h1>IPO-bevakning <span class="muted">Norden</span></h1>
+  <nav class="filters" aria-label="Filter">
+    {% for key, label in filters.items() %}
+      <a href="/?f={{ key }}" class="chip {% if flt == key %}active{% endif %}">{{ label }} <span class="count">{{ counts[key] }}</span></a>
+    {% endfor %}
+  </nav>
+</header>
+
+<main>
+  {% if not items %}
+    <p class="empty">
+      {% if flt == "open" %}Inga teckningsperioder är öppna just nu enligt källorna.
+      {% elif flt == "past" %}Inga noteringar de senaste veckorna.
+      {% else %}Inga kommande IPO:er hittades. {% if not runs %}Ingen hämtning har körts än – tryck på ”Hämta nu”.{% endif %}{% endif %}
+    </p>
+  {% endif %}
+
+  {% for v in items %}
+  {% set broker_code, broker_text = v.broker_status %}
+  <article class="card status-{{ v.status }} {% if v.closing_soon %}soon{% endif %}">
+    <div class="card-head">
+      <h2>{{ v.name }}</h2>
+      <span class="badge b-{{ v.status }}">{{ v.status_label }}</span>
+    </div>
+    <p class="meta">{{ v.market }}{% if v.country %} · {{ v.country }}{% endif %}{% if v.only_fi %} · <span class="warn">Endast i FI:s register – kan vara IPO, kontrollera</span>{% endif %}</p>
+
+    {% if v.status == "open" and v.sub_end %}
+      <p class="countdown {% if v.closing_soon %}urgent{% endif %}">
+        {% if v.closing_soon %}⚠ {% endif %}Stänger om <strong data-end="{{ v.sub_end.isoformat() }}">…</strong>
+        {% if not v.sub_end_time_known %}<span class="muted">(klockslag okänt – räknat till 23:59)</span>{% endif %}
+      </p>
+    {% elif v.status == "upcoming" and v.sub_start %}
+      <p class="countdown">Öppnar om <strong data-end="{{ v.sub_start.isoformat() }}">…</strong></p>
+    {% endif %}
+
+    <dl class="grid">
+      <dt>Teckningsperiod</dt>
+      <dd>
+        {% if v.sub_start or v.sub_end %}
+          {{ fmt_dt(v.sub_start, false) or "?" }} – {{ fmt_dt(v.sub_end, v.sub_end_time_known) or "?" }}
+          {% set f = v.facts.get("sub_end") %}{% if f %}<span class="src">{{ f.source_label }}</span>{% endif %}
+        {% else %}<span class="muted">Okänd</span>{% endif %}
+      </dd>
+
+      <dt>Pris</dt>
+      <dd>{% if v.price_text %}{{ v.price_text }} <span class="src">{{ v.price_fact.source_label }}</span>{% else %}<span class="muted">Okänt</span>{% endif %}</dd>
+
+      <dt>Minsta teckning</dt>
+      <dd>{% set f = v.facts.get("min_subscription") %}{% if f %}{{ f.value }} <span class="src">{{ f.source_label }}</span>{% else %}<span class="muted">Okänd</span>{% endif %}</dd>
+
+      <dt>Första handelsdag</dt>
+      <dd>{% set f = v.facts.get("first_trading_day") %}{% if f %}{{ fmt_date(v.first_trading_day) }} <span class="src">{{ f.source_label }}</span>{% else %}<span class="muted">Okänd</span>{% endif %}</dd>
+
+      <dt>Teckna via</dt>
+      <dd class="broker broker-{{ broker_code }}">
+        {{ broker_text }}
+        {% if broker_code == "unknown" %}
+          <span class="links">Se <a href="{{ AVANZA_IPO_PAGE }}" target="_blank" rel="noopener">Avanza</a>
+          (<a href="{{ AVANZA_OTHER_PAGE }}" target="_blank" rel="noopener">övriga</a>) ·
+          <a href="{{ NORDNET_IPO_PAGE }}" target="_blank" rel="noopener">Nordnet</a></span>
+        {% endif %}
+      </dd>
+    </dl>
+
+    <p class="links-row">
+      {% set p = v.facts.get("prospectus_url") %}
+      {% if p %}<a href="{{ p.value }}" target="_blank" rel="noopener">Prospekt (PDF)</a>{% if v.get("prospectus_type") %} <span class="muted">{{ v.get("prospectus_type") }}, godkänt {{ v.get("prospectus_date") }}</span>{% endif %}{% else %}<span class="muted">Inget prospekt hittat hos FI</span>{% endif %}
+    </p>
+    <p class="sources">Källor:
+      {% for s, url in v.all_sources.items() %}{% if url %}<a href="{{ url }}" target="_blank" rel="noopener">{{ SOURCE_LABELS.get(s, s) }}</a>{% else %}{{ SOURCE_LABELS.get(s, s) }}{% endif %}{% if not loop.last %} · {% endif %}{% endfor %}
+    </p>
+    {% if v.facts.get("sub_end") and v.facts["sub_end"].source == "fi_prospekt" %}
+      <p class="note">Tider är tolkade ur prospektet. Mäklare stänger ofta sin teckning tidigare än prospektets sista dag – kontrollera hos mäklaren.</p>
+    {% endif %}
+  </article>
+  {% endfor %}
+</main>
+
+<footer>
+  <form method="post" action="/hamta"><button type="submit" {% if fetching %}disabled{% endif %}>{% if fetching %}Hämtar…{% else %}Hämta nu{% endif %}</button></form>
+  <ul class="runs">
+    {% for r in runs %}
+      <li>{{ SOURCE_LABELS.get(r.source, r.source) }}: {% if r.ok %}✓{% elif r.ok is none %}pågår{% else %}<span class="err">fel</span>{% endif %} {{ r.started_at[:16].replace("T", " ") }}{% if r.message %} – {{ r.message }}{% endif %}</li>
+    {% endfor %}
+  </ul>
+  <p class="disclaimer">Visar bara fakta, datum och källor – inga investeringsråd. Data: Inderes (personligt bruk) och Finansinspektionen (öppna data, källa FI). Avanza och Nordnet hämtas inte automatiskt eftersom deras villkor förbjuder det.</p>
+</footer>
+
+<script>
+  function fmt(ms) {
+    if (ms <= 0) return "nu";
+    const m = Math.floor(ms / 60000), d = Math.floor(m / 1440), h = Math.floor((m % 1440) / 60), mm = m % 60;
+    return (d ? d + " d " : "") + (d || h ? h + " h " : "") + mm + " min";
+  }
+  function tick() {
+    document.querySelectorAll("[data-end]").forEach(el => { el.textContent = fmt(new Date(el.dataset.end) - Date.now()); });
+  }
+  tick(); setInterval(tick, 30000);
+</script>
+</body>
+</html>
