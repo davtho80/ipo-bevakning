@@ -21,17 +21,28 @@
     <p class="empty">
       {% if flt == "open" %}Inga teckningsperioder är öppna just nu enligt källorna.
       {% elif flt == "past" %}Inga noteringar de senaste veckorna.
+      {% elif flt == "mine" %}Du har inte markerat någon IPO som Intresserad eller Tecknat.
       {% else %}Inga kommande IPO:er hittades. {% if not runs %}Ingen hämtning har körts än – tryck på ”Hämta nu”.{% endif %}{% endif %}
     </p>
   {% endif %}
 
   {% for v in items %}
   {% set broker_code, broker_text = v.broker_status %}
-  <article class="card status-{{ v.status }} {% if v.closing_soon %}soon{% endif %}">
+  <article id="ipo-{{ v.id }}" class="card status-{{ v.status }} {% if v.closing_soon and not v.dismissed %}soon{% endif %} {% if v.dismissed %}dismissed{% endif %}">
     <div class="card-head">
       <h2>{{ v.name }}</h2>
       <span class="badge b-{{ v.status }}">{{ v.status_label }}</span>
     </div>
+    {% if v.dismissed %}
+    <p class="meta">{{ v.market }}{% if v.country %} · {{ v.country }}{% endif %} · Ej intresserad</p>
+    <div class="mark-row">
+      <form method="post" action="/ipo/{{ v.id }}/status"><input type="hidden" name="f" value="{{ flt }}">
+        <button name="status" value="ej_intresserad" class="mark on" aria-pressed="true">Ej intresserad ✕</button></form>
+      <a class="edit" href="/ipo/{{ v.id }}?f={{ flt }}">Visa/ändra</a>
+    </div>
+  </article>
+  {% continue %}
+    {% endif %}
     <p class="meta">{{ v.market }}{% if v.country %} · {{ v.country }}{% endif %}{% if v.only_fi %} · <span class="warn">Endast i FI:s register – kan vara IPO, kontrollera</span>{% endif %}</p>
 
     {% if v.status == "open" and v.sub_end %}
@@ -76,6 +87,20 @@
       {% set p = v.facts.get("prospectus_url") %}
       {% if p %}<a href="{{ p.value }}" target="_blank" rel="noopener">Prospekt (PDF)</a>{% if v.get("prospectus_type") %} <span class="muted">{{ v.get("prospectus_type") }}, godkänt {{ v.get("prospectus_date") }}</span>{% endif %}{% else %}<span class="muted">Inget prospekt hittat hos FI</span>{% endif %}
     </p>
+    {% if v.mark and (v.mark.allotment is not none or v.mark.sub_price is not none or v.mark.note) %}
+    <div class="mine-box">
+      {% if v.mark.allotment is not none %}<div>Tilldelning: <strong>{{ "{:,}".format(v.mark.allotment).replace(",", " ") }} aktier</strong>{% if v.mark.sub_price is not none %} à {{ ("%g" % v.mark.sub_price).replace(".", ",") }} {{ v.get("currency") or "" }}{% endif %}</div>
+      {% elif v.mark.sub_price is not none %}<div>Teckningskurs: {{ ("%g" % v.mark.sub_price).replace(".", ",") }} {{ v.get("currency") or "" }}</div>{% endif %}
+      {% if v.mark.note %}<div class="note-text">{{ v.mark.note }}</div>{% endif %}
+    </div>
+    {% endif %}
+    <div class="mark-row">
+      {% for key, label in MARK_STATUSES.items() %}
+      <form method="post" action="/ipo/{{ v.id }}/status"><input type="hidden" name="f" value="{{ flt }}">
+        <button name="status" value="{{ key }}" class="mark {% if v.mark_status == key %}on{% endif %}" aria-pressed="{{ 'true' if v.mark_status == key else 'false' }}">{{ label }}</button></form>
+      {% endfor %}
+      <a class="edit" href="/ipo/{{ v.id }}?f={{ flt }}">Ändra uppgifter</a>
+    </div>
     <p class="sources">Källor:
       {% for s, url in v.all_sources.items() %}{% if url %}<a href="{{ url }}" target="_blank" rel="noopener">{{ SOURCE_LABELS.get(s, s) }}</a>{% else %}{{ SOURCE_LABELS.get(s, s) }}{% endif %}{% if not loop.last %} · {% endif %}{% endfor %}
     </p>

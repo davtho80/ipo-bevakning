@@ -40,6 +40,15 @@ CREATE TABLE IF NOT EXISTS fetch_runs (
     items       INTEGER,
     message     TEXT
 );
+-- Dina egna markeringar (påverkas aldrig av hämtningen)
+CREATE TABLE IF NOT EXISTS marks (
+    ipo_id      INTEGER PRIMARY KEY REFERENCES ipos(id) ON DELETE CASCADE,
+    status      TEXT CHECK (status IN ('intresserad', 'tecknat', 'ej_intresserad')),
+    allotment   INTEGER,                   -- tilldelade aktier
+    sub_price   REAL,                      -- teckningskurs per aktie
+    note        TEXT,
+    updated_at  TEXT NOT NULL
+);
 -- Cache så att samma prospekt-PDF bara laddas ned och tolkas en gång
 CREATE TABLE IF NOT EXISTS prospectus_cache (
     fi_id       TEXT PRIMARY KEY,
@@ -129,3 +138,30 @@ def last_runs(conn) -> list[sqlite3.Row]:
            JOIN (SELECT source, MAX(id) AS id FROM fetch_runs GROUP BY source) m ON m.id = r.id
            ORDER BY r.source"""
     ).fetchall()
+
+
+MARK_STATUSES = {
+    "intresserad": "Intresserad",
+    "tecknat": "Tecknat",
+    "ej_intresserad": "Ej intresserad",
+}
+
+
+def get_mark(conn, ipo_id: int) -> sqlite3.Row | None:
+    return conn.execute("SELECT * FROM marks WHERE ipo_id=?", (ipo_id,)).fetchone()
+
+
+def set_mark(conn, ipo_id: int, **values) -> None:
+    """Uppdaterar bara de fält som skickas in (None tömmer fältet)."""
+    allowed = {"status", "allotment", "sub_price", "note"}
+    bad = set(values) - allowed
+    if bad:
+        raise ValueError(f"Okända fält: {bad}")
+    if values.get("status") not in (None, *MARK_STATUSES):
+        raise ValueError("Ogiltig status")
+    conn.execute(
+        "INSERT INTO marks (ipo_id, updated_at) VALUES (?, ?) ON CONFLICT(ipo_id) DO NOTHING",
+        (ipo_id, now_iso()),
+    )
+    for k, v in values.items():
+        conn.execute(f"UPDATE marks SET {k}=?, updated_at=? WHERE ipo_id=?", (v, now_iso(), ipo_id))

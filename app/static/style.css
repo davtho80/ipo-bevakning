@@ -16,7 +16,7 @@ a { color: var(--accent); }
 .top { position: sticky; top: 0; background: var(--bg); padding: 12px 16px 8px; border-bottom: 1px solid var(--line); z-index: 1; }
 h1 { font-size: 1.25rem; margin: 0 0 8px; }
 .muted { color: var(--muted); font-weight: normal; }
-.filters { display: flex; gap: 8px; overflow-x: auto; }
+.filters { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip { white-space: nowrap; text-decoration: none; color: var(--text); border: 1px solid var(--line); background: var(--card); padding: 6px 12px; border-radius: 999px; font-size: .9rem; }
 .chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
 .chip .count { opacity: .75; margin-left: 2px; }
@@ -50,3 +50,28 @@ footer button { font: inherit; padding: 8px 14px; border-radius: 8px; border: 1p
 .runs { padding-left: 18px; }
 .err { color: var(--soon); }
 @media (max-width: 330px) { .grid { grid-template-columns: 1fr; } .grid dt { margin-top: 6px; } }
+
+/* Steg 2: markeringar */
+.card.dismissed { opacity: .6; padding-top: 10px; padding-bottom: 10px; }
+.card.dismissed h2 { font-size: 1rem; }
+.mark-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; }
+.mark-row form { margin: 0; }
+.mark { font: inherit; font-size: .85rem; padding: 6px 10px; min-height: 36px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--text); cursor: pointer; }
+.mark.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.edit { font-size: .85rem; margin-left: auto; }
+.mine-box { margin-top: 10px; padding: 8px 10px; border-radius: 8px; background: var(--upcoming-bg); font-size: .9rem; }
+.note-text { white-space: pre-wrap; color: var(--muted); margin-top: 2px; }
+.back { margin: 0 0 4px; font-size: .9rem; }
+.edit-form fieldset { border: 1px solid var(--line); border-radius: 12px; background: var(--card); padding: 12px 14px; margin: 0 0 12px; }
+.edit-form legend { font-weight: 600; padding: 0 4px; }
+.edit-form label { display: block; font-size: .9rem; color: var(--muted); margin-top: 8px; }
+.edit-form input:not([type=radio]), .edit-form textarea { display: block; width: 100%; margin-top: 4px; font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; min-height: 40px; }
+.edit-form input[aria-invalid=true] { border-color: var(--soon); }
+.radio-row { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.radio-row label { color: var(--text); margin-top: 4px; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+@media (max-width: 480px) { .two { grid-template-columns: 1fr; } }
+.hint { display: block; font-size: .8rem; color: var(--muted); margin: 4px 0 0; }
+.field-error, .form-error { color: var(--soon); font-size: .85rem; }
+.actions { display: flex; align-items: center; gap: 16px; margin-bottom: 32px; }
+.primary { font: inherit; padding: 10px 20px; border-radius: 8px; border: 0; background: var(--accent); color: #fff; cursor: pointer; }

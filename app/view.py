@@ -59,6 +59,19 @@ class IpoView:
     first_trading_day: date | None = None
     closing_soon: bool = False
     only_fi: bool = False
+    mark: dict | None = None
+
+    @property
+    def mark_status(self) -> str | None:
+        return (self.mark or {}).get("status")
+
+    @property
+    def mark_label(self) -> str | None:
+        return db.MARK_STATUSES.get(self.mark_status or "")
+
+    @property
+    def dismissed(self) -> bool:
+        return self.mark_status == "ej_intresserad"
 
     def get(self, key: str) -> str | None:
         f = self.facts.get(key)
@@ -85,6 +98,8 @@ class IpoView:
     def price_text(self) -> str | None:
         cur = self.get("currency") or ""
         lo, hi, p = self.get("price_min"), self.get("price_max"), self.get("price")
+        if p and self.facts["price"].source == "manual":
+            return f"{_num(p)} {cur}".strip()
         if lo and hi:
             return f"{_num(lo)}–{_num(hi)} {cur}".strip()
         if p:
@@ -93,17 +108,23 @@ class IpoView:
 
     @property
     def price_fact(self) -> Fact | None:
-        return self.facts.get("price_min") or self.facts.get("price")
+        p = self.facts.get("price")
+        if p and p.source == "manual":
+            return p
+        return self.facts.get("price_min") or p
 
     @property
     def broker_status(self) -> tuple[str, str]:
-        """(kod, text). Steg 2 lägger till egna markeringar; tills dess okänt."""
+        """(kod, text) utifrån dina egna uppgifter. Avanza/Nordnet hämtas inte
+        automatiskt (deras villkor förbjuder det)."""
         avanza = self.get("broker_avanza")
-        other = self.get("broker_other")
+        other = (self.get("broker_other") or "").strip()
         if avanza == "ja":
             return "avanza", "Kan teckna via Avanza"
         if other:
             return "other", f"Kan teckna via annan mäklare: {other}"
+        if avanza == "nej":
+            return "none", "Inte via Avanza – annan mäklare okänd"
         return "unknown", "Okänt – kontrollera"
 
 
@@ -151,6 +172,8 @@ def build(conn, now: datetime | None = None) -> list[IpoView]:
                 sources[r["source"]] = r["url"]
         v = IpoView(ipo["id"], (facts.get("name").value if facts.get("name") else ipo["name"]), facts, sources)
         v.only_fi = bool(v.get("only_fi"))
+        m = db.get_mark(conn, ipo["id"])
+        v.mark = dict(m) if m else None
         v.sub_start, _ = _parse_dt(v.get("sub_start"), end_of_day=False)
         v.sub_end, v.sub_end_time_known = _parse_dt(v.get("sub_end"), end_of_day=True)
         ftd, _ = _parse_dt(v.get("first_trading_day"), end_of_day=False)
@@ -184,13 +207,15 @@ def sort_key(v: IpoView):
     )
     if v.status == "listed":
         # senast noterade först
-        return (_ORDER[v.status], -(v.past_date.toordinal() if v.past_date else 0), v.name)
-    return (_ORDER[v.status], when or FAR, v.name)
+        return (v.dismissed, _ORDER[v.status], -(v.past_date.toordinal() if v.past_date else 0), v.name)
+    return (v.dismissed, _ORDER[v.status], when or FAR, v.name)
 
 
 def select(views: list[IpoView], flt: str, today: date) -> list[IpoView]:
     if flt == "open":
         sel = [v for v in views if v.open_now]
+    elif flt == "mine":
+        sel = [v for v in views if v.mark_status in ("intresserad", "tecknat")]
     elif flt == "past":
         cutoff = today - timedelta(days=config.PAST_DAYS)
         sel = [v for v in views if v.status == "listed" and v.past_date and v.past_date >= cutoff]

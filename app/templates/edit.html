@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ v.name }} – IPO-bevakning</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="top">
+  <p class="back"><a href="/?f={{ flt }}#ipo-{{ v.id }}">← Tillbaka</a></p>
+  <h1>{{ v.name }}</h1>
+  <p class="meta">{{ v.market }}{% if v.country %} · {{ v.country }}{% endif %} · {{ v.status_label }}</p>
+</header>
+
+<main>
+  {% if errors %}<p class="form-error" role="alert">Kontrollera de markerade fälten.</p>{% endif %}
+  <form method="post" action="/ipo/{{ v.id }}" class="edit-form">
+    <input type="hidden" name="f" value="{{ flt }}">
+
+    <fieldset>
+      <legend>Min markering</legend>
+      <div class="radio-row">
+        <label><input type="radio" name="status" value="" {% if not mark.status %}checked{% endif %}> Ingen</label>
+        {% for key, label in MARK_STATUSES.items() %}
+        <label><input type="radio" name="status" value="{{ key }}" {% if mark.status == key %}checked{% endif %}> {{ label }}</label>
+        {% endfor %}
+      </div>
+      <div class="two">
+        <label>Tilldelning (antal aktier)
+          <input name="allotment" inputmode="numeric" value="{{ mark.allotment if mark.allotment is not none else '' }}" {% if errors.allotment %}aria-invalid="true"{% endif %}>
+          {% if errors.allotment %}<span class="field-error">{{ errors.allotment }}</span>{% endif %}
+        </label>
+        <label>Teckningskurs per aktie
+          <input name="sub_price" inputmode="decimal" value="{{ (mark.sub_price|string).replace('.', ',') if mark.sub_price not in (none, '') else '' }}" {% if errors.sub_price %}aria-invalid="true"{% endif %}>
+          {% if errors.sub_price %}<span class="field-error">{{ errors.sub_price }}</span>{% endif %}
+        </label>
+      </div>
+      <label>Anteckning
+        <textarea name="note" rows="3">{{ mark.note or '' }}</textarea>
+      </label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Var kan jag teckna?</legend>
+      <p class="hint">Avanza och Nordnet läses inte automatiskt (deras villkor förbjuder det). Kontrollera
+        <a href="{{ AVANZA_IPO_PAGE }}" target="_blank" rel="noopener">Avanza</a>
+        (<a href="{{ AVANZA_OTHER_PAGE }}" target="_blank" rel="noopener">övriga erbjudanden</a>) och
+        <a href="{{ NORDNET_IPO_PAGE }}" target="_blank" rel="noopener">Nordnet</a>.</p>
+      <div class="radio-row">
+        {% set av = manual.get("broker_avanza") or "" %}
+        <label><input type="radio" name="broker_avanza" value="" {% if not av %}checked{% endif %}> Vet inte</label>
+        <label><input type="radio" name="broker_avanza" value="ja" {% if av == "ja" %}checked{% endif %}> Finns på Avanza</label>
+        <label><input type="radio" name="broker_avanza" value="nej" {% if av == "nej" %}checked{% endif %}> Inte på Avanza</label>
+      </div>
+      <label>Annan mäklare eller bank
+        <input name="broker_other" placeholder="t.ex. Nordnet, emissionsinstitutets hemsida" value="{{ manual.get('broker_other') or '' }}">
+      </label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Egna uppgifter</legend>
+      <p class="hint">Används före källornas värden. Fyll bara i det du vill rätta eller komplettera, till exempel mäklarens egen sista teckningstid.</p>
+      {% macro src(key) %}{% set f = v.facts.get(key) %}{% if f and f.source != "manual" %}<span class="hint">Källa: {{ f.value }} ({{ f.source_label }})</span>{% endif %}{% endmacro %}
+      <div class="two">
+        <label>Teckning öppnar
+          <input type="date" name="sub_start" value="{{ manual.get('sub_start') or '' }}" {% if errors.sub_start %}aria-invalid="true"{% endif %}>
+          {{ src("sub_start") }}{% if errors.sub_start %}<span class="field-error">{{ errors.sub_start }}</span>{% endif %}
+        </label>
+        <label>Teckning stänger (datum och tid)
+          <input type="datetime-local" name="sub_end" value="{{ manual.get('sub_end') or '' }}" {% if errors.sub_end %}aria-invalid="true"{% endif %}>
+          {{ src("sub_end") }}{% if errors.sub_end %}<span class="field-error">{{ errors.sub_end }}</span>{% endif %}
+        </label>
+        <label>Pris per aktie
+          <input name="price" inputmode="decimal" value="{{ (manual.get('price') or '').replace('.', ',') }}" {% if errors.price %}aria-invalid="true"{% endif %}>
+          {% if v.price_text and v.price_fact.source != "manual" %}<span class="hint">Källa: {{ v.price_text }} ({{ v.price_fact.source_label }})</span>{% endif %}{% if errors.price %}<span class="field-error">{{ errors.price }}</span>{% endif %}
+        </label>
+        <label>Minsta teckning
+          <input name="min_subscription" placeholder="t.ex. 100 aktier" value="{{ manual.get('min_subscription') or '' }}">
+          {{ src("min_subscription") }}
+        </label>
+        <label>Första handelsdag
+          <input type="date" name="first_trading_day" value="{{ manual.get('first_trading_day') or '' }}" {% if errors.first_trading_day %}aria-invalid="true"{% endif %}>
+          {{ src("first_trading_day") }}{% if errors.first_trading_day %}<span class="field-error">{{ errors.first_trading_day }}</span>{% endif %}
+        </label>
+        <label>Marknad
+          <input name="market" placeholder="t.ex. First North" value="{{ manual.get('market') or '' }}">
+          {{ src("market") }}
+        </label>
+      </div>
+    </fieldset>
+
+    <div class="actions">
+      <button type="submit" class="primary">Spara</button>
+      <a href="/?f={{ flt }}#ipo-{{ v.id }}">Avbryt</a>
+    </div>
+  </form>
+</main>
+</body>
+</html>

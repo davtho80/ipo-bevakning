@@ -21,6 +21,19 @@ kl. 07:05 och 16:05 (ändras med `IPO_FETCH_TIMES`). Kräver `pdftotext`
 
 Tester: `.venv/bin/python -m pytest -q`
 
+## Dina markeringar (steg 2)
+
+- Snabbknappar på varje kort: **Intresserad**, **Tecknat**, **Ej intresserad**
+  (tryck igen för att ta bort). "Ej intresserad" fälls ihop och läggs sist.
+- **Ändra uppgifter** öppnar en sida där du anger tilldelning (antal aktier),
+  teckningskurs och anteckning, samt **var du kan teckna**: "Finns på Avanza",
+  "Inte på Avanza" och/eller annan mäklare/bank. Det styr markeringen
+  "Kan teckna via Avanza" / "Kan teckna via annan mäklare: …" / "Okänt – kontrollera".
+- Där kan du också rätta eller komplettera teckningsperiod (t.ex. mäklarens egen
+  sista tid), pris, minsta teckning, första handelsdag och marknad. Egna uppgifter
+  märks "Egen uppgift", går före källornas värden och skrivs aldrig över av hämtningen.
+- Filtret **Mina** visar det du markerat som Intresserad eller Tecknat.
+
 ## Källor – vad som används och varför
 
 | Källa | Används | Villkor |
@@ -33,8 +46,8 @@ Tester: `.venv/bin/python -m pytest -q`
 | Levler | Ej relevant – Levler erbjuder inte teckning i IPO:er, bara köp från första handelsdag | – |
 
 Därför visas mäklartillgänglighet som **"Okänt – kontrollera"** med direktlänkar
-till Avanza och Nordnet. I steg 2 kan du själv markera "Kan teckna via Avanza"
-eller ange annan mäklare.
+till Avanza och Nordnet. Du kan själv markera "Kan teckna via Avanza"
+eller ange annan mäklare (se ovan).
 
 Begränsningar: FI täcker bara svenska prospekt, och små noteringar på First
 North/Spotlight/NGM görs ofta utan prospekt (bara memorandum) – då finns bara
