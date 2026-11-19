@@ -113,6 +113,21 @@
 
 <footer>
   <form method="post" action="/hamta"><button type="submit" {% if fetching %}disabled{% endif %}>{% if fetching %}Hämtar…{% else %}Hämta nu{% endif %}</button></form>
+  {% if msg == "test-ok" %}<p class="ok-msg" role="status">Testnotisen skickades.</p>
+  {% elif msg == "test-fel" %}<p class="field-error" role="alert">Testnotisen kunde inte skickas – kontrollera NTFY_TOPIC/NTFY_SERVER och loggen.</p>{% endif %}
+  <div class="notis">
+    {% if ntfy_on %}
+      <span>Notiser: på</span>
+      <form method="post" action="/notis/test"><button type="submit">Skicka testnotis</button></form>
+    {% else %}
+      <span>Notiser: av – ange <code>NTFY_TOPIC</code> i <code>.env</code></span>
+    {% endif %}
+  </div>
+  {% if sent %}
+  <details><summary>Senaste notiser</summary><ul class="runs">
+    {% for n in sent %}<li>{{ n.sent_at[:16].replace("T", " ") }} – {{ n.title }}</li>{% endfor %}
+  </ul></details>
+  {% endif %}
   <ul class="runs">
     {% for r in runs %}
       <li>{{ SOURCE_LABELS.get(r.source, r.source) }}: {% if r.ok %}✓{% elif r.ok is none %}pågår{% else %}<span class="err">fel</span>{% endif %} {{ r.started_at[:16].replace("T", " ") }}{% if r.message %} – {{ r.message }}{% endif %}</li>

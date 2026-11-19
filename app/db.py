@@ -49,6 +49,16 @@ CREATE TABLE IF NOT EXISTS marks (
     note        TEXT,
     updated_at  TEXT NOT NULL
 );
+-- Skickade notiser. deadline ingår i nyckeln så att en ändrad sista tid
+-- (t.ex. mäklarens egen, tidigare tid) ger nya påminnelser.
+CREATE TABLE IF NOT EXISTS notifications (
+    ipo_id      INTEGER NOT NULL REFERENCES ipos(id) ON DELETE CASCADE,
+    kind        TEXT NOT NULL,             -- new | 48h | 24h | test
+    deadline    TEXT NOT NULL DEFAULT '',
+    sent_at     TEXT NOT NULL,
+    title       TEXT,
+    PRIMARY KEY (ipo_id, kind, deadline)
+);
 -- Cache så att samma prospekt-PDF bara laddas ned och tolkas en gång
 CREATE TABLE IF NOT EXISTS prospectus_cache (
     fi_id       TEXT PRIMARY KEY,
@@ -165,3 +175,20 @@ def set_mark(conn, ipo_id: int, **values) -> None:
     )
     for k, v in values.items():
         conn.execute(f"UPDATE marks SET {k}=?, updated_at=? WHERE ipo_id=?", (v, now_iso(), ipo_id))
+
+
+def sent_keys(conn) -> set[tuple[int, str, str]]:
+    return {(r["ipo_id"], r["kind"], r["deadline"]) for r in conn.execute(
+        "SELECT ipo_id, kind, deadline FROM notifications")}
+
+
+def record_sent(conn, ipo_id: int, kind: str, deadline: str, title: str) -> None:
+    conn.execute(
+        "INSERT OR IGNORE INTO notifications (ipo_id, kind, deadline, sent_at, title) VALUES (?, ?, ?, ?, ?)",
+        (ipo_id, kind, deadline, now_iso(), title),
+    )
+
+
+def recent_notifications(conn, limit: int = 5) -> list[sqlite3.Row]:
+    return conn.execute(
+        "SELECT * FROM notifications ORDER BY sent_at DESC LIMIT ?", (limit,)).fetchall()

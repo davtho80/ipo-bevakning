@@ -17,6 +17,9 @@ SCHEDULER_ENABLED = os.getenv("IPO_SCHEDULER", "1") == "1"
 USER_AGENT = os.getenv("IPO_USER_AGENT", "ipo-bevakning/0.1 (privat, icke-kommersiellt bruk)")
 NTFY_SERVER = os.getenv("NTFY_SERVER", "https://ntfy.sh").rstrip("/")
 NTFY_TOPIC = os.getenv("NTFY_TOPIC", "")
+NTFY_TOKEN = os.getenv("NTFY_TOKEN", "")  # valfritt: åtkomsttoken för skyddat ämne
+APP_BASE_URL = os.getenv("APP_BASE_URL", "").rstrip("/")  # länk i notisen, t.ex. https://ipo.example.se
+NOTIFY_INTERVAL_MIN = int(os.getenv("IPO_NOTIFY_INTERVAL_MIN", "15"))
 
 # Hur länge redan noterade IPO:er visas i "Tidigare" (dagar)
 PAST_DAYS = int(os.getenv("IPO_PAST_DAYS", "45"))

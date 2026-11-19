@@ -11,7 +11,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from . import config, db, view
+from . import config, db, notify, view
 from .fetch import run_fetch
 from .scheduler import start_scheduler
 
@@ -22,6 +22,14 @@ templates.env.add_extension("jinja2.ext.loopcontrols")
 _fetch_lock = threading.Lock()
 
 
+_notify_lock = threading.Lock()
+
+
+def notify_once() -> None:
+    with _notify_lock, db.session() as conn:
+        notify.run(conn)
+
+
 def fetch_once() -> None:
     if not _fetch_lock.acquire(blocking=False):
         return  # en hämtning pågår redan
@@ -29,11 +37,12 @@ def fetch_once() -> None:
         run_fetch()
     finally:
         _fetch_lock.release()
+    notify_once()  # nya IPO:er notifieras direkt efter hämtningen
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    sched = start_scheduler(fetch_once) if config.SCHEDULER_ENABLED else None
+    sched = start_scheduler(fetch_once, notify_once) if config.SCHEDULER_ENABLED else None
     yield
     if sched:
         sched.shutdown(wait=False)
@@ -76,12 +85,14 @@ def index(request: Request, f: str = "aktuella"):
     with db.session() as conn:
         views = view.build(conn, now)
         runs = db.last_runs(conn)
+        sent = db.recent_notifications(conn)
     items = view.select(views, f, now.date())
     counts = {k: len(view.select(views, k, now.date())) for k in FILTERS}
     return templates.TemplateResponse(
         request, "index.html",
         {"items": items, "flt": f, "filters": FILTERS, "counts": counts, "runs": runs,
-         "now": now, "fetching": _fetch_lock.locked()},
+         "now": now, "fetching": _fetch_lock.locked(), "sent": sent,
+         "ntfy_on": bool(config.NTFY_TOPIC), "msg": request.query_params.get("msg")},
     )
 
 
@@ -196,6 +207,17 @@ async def save(request: Request, ipo_id: int):
         for field, value in manual.items():
             db.set_fact(conn, ipo_id, "manual", field, value)
     return _back(f, ipo_id)
+
+
+@app.post("/notis/test")
+def test_notification():
+    try:
+        notify.send_test()
+        msg = "test-ok"
+    except Exception:
+        logging.getLogger("ipo.notify").exception("Testnotis misslyckades")
+        msg = "test-fel"
+    return RedirectResponse(f"/?msg={msg}", status_code=303)
 
 
 @app.post("/hamta")

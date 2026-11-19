@@ -75,3 +75,9 @@ footer button { font: inherit; padding: 8px 14px; border-radius: 8px; border: 1p
 .field-error, .form-error { color: var(--soon); font-size: .85rem; }
 .actions { display: flex; align-items: center; gap: 16px; margin-bottom: 32px; }
 .primary { font: inherit; padding: 10px 20px; border-radius: 8px; border: 0; background: var(--accent); color: #fff; cursor: pointer; }
+
+/* Steg 3: notiser */
+.notis { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 12px 0 4px; }
+.notis form { margin: 0; }
+.ok-msg { color: var(--open); }
+code { font-size: .85em; }
