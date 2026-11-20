@@ -1,0 +1,22 @@
+[Unit]
+Description=IPO-bevakning (webbapp + schemalagd hämtning och notiser)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=ipo
+Group=ipo
+WorkingDirectory=/opt/ipo-bevakning
+# Bara EN process: schemaläggaren körs i appen, fler workers ger dubbla hämtningar/notiser
+ExecStart=/opt/ipo-bevakning/.venv/bin/uvicorn app.web:app --host 127.0.0.1 --port 8000 --proxy-headers --workers 1
+Restart=on-failure
+RestartSec=10
+# Härdning
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ReadWritePaths=/var/lib/ipo-bevakning
+
+[Install]
+WantedBy=multi-user.target

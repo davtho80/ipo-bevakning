@@ -1,0 +1,8 @@
+[Unit]
+Description=Säkerhetskopia av IPO-bevaknings databas
+
+[Service]
+Type=oneshot
+User=ipo
+Group=ipo
+ExecStart=/opt/ipo-bevakning/deploy/backup.sh

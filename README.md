@@ -90,12 +90,10 @@ stänger ofta tidigare än prospektets sista dag.
 - `app/notify.py` – vilka notiser som ska skickas, och utskick via ntfy
 - `app/web.py`, `app/templates/`, `app/static/` – gränssnittet
 
-## Hosting (förslag)
+## Driftsättning
 
-Schemat måste köras även när datorn är av, och SQLite-filen ska finnas kvar –
-alltså en liten server som alltid är på, inte en gratistjänst som somnar:
-
-- **Hetzner Cloud CX22** (~4 €/mån) eller **Oracle Cloud Always Free** (gratis,
-  men krångligare registrering). Kör appen med systemd, Caddy framför för HTTPS,
-  och skydda sidan med lösenord (basic auth i Caddy) eftersom dina markeringar
-  ligger där.
+Steg-för-steg för en gratis server hos Oracle Cloud finns i
+[`deploy/ORACLE.md`](deploy/ORACLE.md). `deploy/install.sh` installerar allt på
+en Ubuntu 24.04-server: appen som systemd-tjänst (en process, med schemat
+inbyggt), Caddy med HTTPS och lösenord, brandvägg, swap och nattliga
+säkerhetskopior av databasen. Skriptet kan köras om för att uppdatera.

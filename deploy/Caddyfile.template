@@ -1,0 +1,9 @@
+# Genereras av deploy/install.sh – ändra i mallen, inte här.
+__DOMAIN__ {
+	encode gzip
+	# Lösenordsskydd: dina markeringar och knappar ska inte vara öppna för alla
+	basicauth {
+		__USER__ __HASH__
+	}
+	reverse_proxy 127.0.0.1:8000
+}
